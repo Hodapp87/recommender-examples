@@ -7,21 +7,22 @@
 ###########################################################################
 
 import numpy as np
+import numpy.linalg
 
 def SVD(X):
     """Returns the singular value decomposition of the input matrix.
-    Returned values will satisfy: X = U * np.diag(S) * V.t
 
     Parameters:
     X -- Input matrix of shape (m,n), as a NumPy matrix or array
 
     Returns:
-    U -- Left singular vectors as NumPy matrix of shape (m, r), r=rank(X)
-    S -- Singular values as 1D NumPy array of length r
-    V -- Right singular vectors as NumPy matrix of shape (n, r)
+    U -- Left singular vectors as NumPy array of shape (m, m)
+    S -- Singular values as 1D NumPy array of shape (m,)
+    V -- Right singular vectors as NumPy array of shape (n, n)
 
     """
-    pass
+    U, S, V = numpy.linalg.svd(X)
+    return U, S, V
 
 def get_ratings(train, test):
     """Compute the ratings and error (???)
