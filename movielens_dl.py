@@ -5,3 +5,34 @@
 # Author: Chris Hodapp (hodapp87@gmail.com)
 # Date: 2018-01-15
 ###########################################################################
+
+def get_user_data():
+    """Reads the user information from the movielens database, and returns
+    it in the form of a Pandas DataFrame with columns:
+    user_id, movie_id, rating, time
+    """
+    pass
+
+def get_movie_data():
+    """Reads the movie information from the movielens database, and
+    returns it in the form of a Pandas DataFrame with columns:
+    movie_id, Action, Adventure, Animation, Childrens, Comedy, Crime,
+    Documentary, Drama, Fantasy, Film-Noir, Horror, Musical, Mystery,
+    Romance, Sci-Fi, Thriller, War, Western
+    """
+    pass
+
+def train_test_split(user_data, frac):
+    """Splits the user information from the movielens database into
+    training & testing datasets.
+
+    Parameters:
+    user_data -- User information from movielens database.
+    frac -- Fraction of ratings for test matrix (e.g. 0.15 if 15% of
+            data should be in testing data, and the rest in training)
+
+    Returns:
+    train_mat -- Training user item matrix (as a NumPy matrix)
+    test_mat -- Testing user item matrix (as a NumPy matrix)
+    """
+    pass
