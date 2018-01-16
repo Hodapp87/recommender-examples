@@ -7,6 +7,7 @@
 ###########################################################################
 
 import pandas as pd
+import sklearn.model_selection
 
 def get_user_data():
     """Reads the user information from the movielens database
@@ -16,9 +17,8 @@ def get_user_data():
     data -- movielens user data as a Pandas DataFrame with columns:
             (user_id, movie_id, rating, time)
     """
-    df = pd.read_csv(
-        "ml-100k/u.data", sep="\t", header=None,
-        names=("user_id", "movie_id", "rating", "time"))
+    df = pd.read_csv("ml-100k/u.data", sep="\t", header=None,
+                     names=("user_id", "movie_id", "rating", "time"))
     return df
 
 def get_movie_data():
@@ -40,9 +40,8 @@ def get_movie_data():
              "Film-Noir", "Horror", "Musical", "Mystery", "Romance", "Sci-Fi",
              "Thriller", "War", "Western")
     # Note from ml-100k/README: We need the first column, and last 19.
-    df = pd.read_csv(
-        "ml-100k/u.item", sep="|", header=None, names=names,
-        usecols=[0] + list(range(6,24)))
+    df = pd.read_csv("ml-100k/u.item", sep="|", header=None,
+                     names=names, usecols=[0] + list(range(6,24)))
     return df
 
 def train_test_split(user_data, frac):
@@ -58,4 +57,5 @@ def train_test_split(user_data, frac):
     train_mat -- Training user item matrix (as a NumPy matrix)
     test_mat -- Testing user item matrix (as a NumPy matrix)
     """
-    pass
+    return sklearn.model_selection.train_test_split(
+        user_data, test_size=frac)
