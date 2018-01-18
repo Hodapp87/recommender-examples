@@ -6,8 +6,10 @@
 # Date: 2018-01-15
 ###########################################################################
 
+import numpy as np
 import pandas as pd
 import sklearn.model_selection
+import scipy.sparse
 
 def get_user_data():
     """Reads the user information from the movielens database
@@ -19,6 +21,8 @@ def get_user_data():
     """
     df = pd.read_csv("ml-100k/u.data", sep="\t", header=None,
                      names=("user_id", "movie_id", "rating", "time"))
+    # Convert Unix seconds to a Pandas timestamp:
+    df["time"] = pd.to_datetime(df["time"], unit="s")
     return df
 
 def get_movie_data():
@@ -59,3 +63,29 @@ def train_test_split(user_data, frac):
     """
     return sklearn.model_selection.train_test_split(
         user_data, test_size=frac)
+
+def user_to_utility(user_data):
+    """Convert movielens user data from a dataframe (with one row per
+    movie rating) to a sparse utility matrix (with one row per user,
+    and one column per movie, and each element gives the user's rating
+    on that movie from 1 to 5).
+
+    Note that in this matrix, a value of 0 is considered to be a
+    missing value - not a rating of zero.
+
+    Parameters:
+    user_data -- Dataframe of the format returned by get_user_data()
+
+    Returns:
+    matrix -- Utility matrix in the form of a sparse SciPy matrix
+    """
+    shape = (int(user_data["user_id"].max() + 1),
+             int(user_data["movie_id"].max() + 1))
+    movies  = user_data["movie_id"]
+    users   = user_data["user_id"]
+    ratings = user_data["rating"]
+    m = scipy.sparse.coo_matrix((ratings, (users, movies)),
+                                shape=shape, dtype=np.int8)
+    # TODO: Does this even need to be a sparse matrix?
+    m = m.tocsr()
+    return m
