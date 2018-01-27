@@ -9,9 +9,7 @@
 import movielens_dl
 
 import numpy as np
-#import numpy.linalg
-import scipy.sparse
-from scipy.sparse.linalg import svds, norm
+from numpy.linalg import norm
 
 def SVD(X):
     """Returns the singular value decomposition of the input matrix.
@@ -48,10 +46,10 @@ def SVT(M, delta, eps, tau, l, kmax):
     (TODO)
     """
     mask = M > 0
-    #k0 = tau / (delta * numpy.linalg.norm(M))
-    #Y = k0 * delta * M
+    k0 = tau / (delta * np.linalg.norm(M))
+    Y = k0 * delta * M
     #print("k0={}".format(k0))
-    Y = np.zeros(shape=M.shape)
+    #Y = np.zeros(shape=M.shape)
     r = 0
     for k in range(kmax):
         print("Iteration {}/{}...".format(k + 1, kmax))
@@ -61,17 +59,19 @@ def SVT(M, delta, eps, tau, l, kmax):
             if s >= min(Y.shape):
                 break
             U,S,Vt = svds(Y, k=s)
-            # SciPy is weird:
-            U, S, Vt = U[:, ::-1], S[::-1], Vt[::-1, :]
-            sv = S[-1]
+            # N.B. 'svds' returns in *ascending* order of singular
+            # value, not descending (like most packages seem to)
+            sv = S[0]
             print("s={}, sv={}".format(s, sv))
             s = s + l
-        r_ = np.where(S > tau)[0]
-        if r_.size:
-            r = r_[-1] + 1
+        #import pdb; pdb.set_trace()
+        #r_ = np.where(S > tau)[0]
+        if True or r_.size:
+            #r = r_[0] + 1
             #print("S={}, U={}, Vt={}, r={}".format(S.shape, U.shape, Vt.shape, r))
             #print("S'={}, U'={}, Vt'={}".format(S[:r].shape, U[:,:r].shape, Vt[:r,:].shape))
-            X = ((S[:r] - tau) * U[:,:r]) @ Vt[:r,:]
+            #X = ((S[-r:] - tau) * U[:,-r:]) @ Vt[-r:,:]
+            X = ((S[S > tau] - tau) * U[:, S > tau]) @ Vt[S > tau, :]
             #print("X={0.shape}".format(X))
         else:
             X = np.zeros(shape=M.shape)
@@ -81,21 +81,70 @@ def SVT(M, delta, eps, tau, l, kmax):
         print("num={}, den={}, num/den={}".format(num, den, num/den))
         if (num / den) < eps:
             break
-        Y = (Y + delta * (M - X))*mask
+        Y[:,:] = (Y + delta * (M - X))*mask
     return X
 
+def UV(M, mask, d, lr=0.5):
+    n,m = M.shape
+    U = np.zeros((n,d))
+    V = np.zeros((d,m))
+    # Initialize elements:
+    avg = M[mask].mean()
+    U[:,:] = np.sqrt(avg / d)
+    V[:,:] = np.sqrt(avg / d)
+    # TODO: Perturb randomly?
+    delta = np.inf
+    rmse = []
+    rmse_avg = None
+    i = 0
+    while delta > 0.001:
+        i += 1
+        # TODO: Check for change in RMSE
+        # Pick an element in U to optimize:
+        r = np.random.randint(n)
+        s = np.random.randint(d)
+        num = (V[s,:] * (M[r,:] - (U[r,:] @ V) + U[r,s]*V[s,:]) * mask[r,:]).sum()
+        den = np.square(V[s,:] * mask[r,:]).sum()
+        if (den > 0):
+            U[r,s] = (1-lr)*U[r,s] + lr * num / den
+        # Pick an element in V to optimize:
+        r = np.random.randint(d)
+        s = np.random.randint(m)
+        num = (U[:,r] * (M[:,s] - (U @ V[:,s]) + U[:,r]*V[r,s]) * mask[:,s]).sum()
+        den = np.square(U[:,r] * mask[:,s]).sum()
+        if (den > 0):
+            V[r,s] = (1-lr)*V[r,s] + lr * num / den
+        rmse.append(norm((U @ V - M)*mask))
+        if len(rmse) >= 100:
+            old_avg = rmse_avg
+            rmse_avg = sum(rmse) / 100
+            rmse = []
+            if old_avg is not None:
+                if old_avg > 0:
+                    delta = (old_avg - rmse_avg) / old_avg
+                else:
+                    delta = 0
+            print("{}: RMSE={} change={:2f}%".format(i, rmse_avg, delta * 100))
+    return U, V
+
+user = movielens_dl.get_user_data()
+user_mat = movielens_dl.user_to_utility(user).astype(np.float32)
+mask = user_mat > 0
+means = user_mat.sum(axis=1) / np.maximum((user_mat > 0).sum(axis=1), 1)
+bias = np.ones(user_mat.shape) * means[:,np.newaxis] * (user_mat > 0)
+user_mat[:,:] -= bias
+
 # SVT test params:
-n1 = 500
-n2 = 400
-mask = np.random.random((n1,n2)) < 0.1
-m = mask.sum()
-mat = (np.random.randint(5, size=(n1,n2)) + 1) * mask
-p = m / (n1 * n2)
-delta = 1.2 / p
-eps = 1e-4
-tau = 5 * min(n1,n2)
-l = 5
-kmax = 500
+if False:
+    n1, n2 = user_mat.shape
+    mask = user_mat > 0
+    m = mask.sum()
+    p = m / (n1 * n2)
+    delta = 1.2 / p
+    eps = 1e-4
+    tau = 5 * min(n1,n2)
+    l = 5
+    kmax = 500
 
 def get_ratings(train, test):
 

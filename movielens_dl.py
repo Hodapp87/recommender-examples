@@ -66,9 +66,9 @@ def train_test_split(user_data, frac):
 
 def user_to_utility(user_data):
     """Convert movielens user data from a dataframe (with one row per
-    movie rating) to a sparse utility matrix (with one row per user,
-    and one column per movie, and each element gives the user's rating
-    on that movie from 1 to 5).
+    movie rating) to a utility matrix (with one row per user, and one
+    column per movie, and each element gives the user's rating on that
+    movie from 1 to 5).
 
     Note that in this matrix, a value of 0 is considered to be a
     missing value - not a rating of zero.
@@ -77,7 +77,8 @@ def user_to_utility(user_data):
     user_data -- Dataframe of the format returned by get_user_data()
 
     Returns:
-    matrix -- Utility matrix in the form of a sparse SciPy matrix
+    matrix -- Utility matrix in the form of a NumPy array
+
     """
     shape = (int(user_data["user_id"].max() + 1),
              int(user_data["movie_id"].max() + 1))
@@ -86,6 +87,5 @@ def user_to_utility(user_data):
     ratings = user_data["rating"]
     m = scipy.sparse.coo_matrix((ratings, (users, movies)),
                                 shape=shape, dtype=np.int8)
-    # TODO: Does this even need to be a sparse matrix?
-    m = m.tocsr()
+    m = m.toarray()
     return m
