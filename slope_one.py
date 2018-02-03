@@ -33,21 +33,21 @@ def deviation_from_df(data):
     counts -- NumPy array of shape (n,n)
     """
     n = data["movie_id"].max() + 1
-    m = user["user_id"].max() + 1
-    movie2idx = [np.where(user["movie_id"] == i)[0] for i in range(n)]
-    user2idx = [np.where(user["user_id"] == i)[0] for i in range(m)]    
+    m = data["user_id"].max() + 1
+    movie2idx = [np.where(data["movie_id"] == i)[0] for i in range(n)]
+    user2idx = [np.where(data["user_id"] == i)[0] for i in range(m)]    
     diff = np.zeros((n,n))
     dev = np.zeros((n,n))
     counts = np.zeros((n,n))    
     for i in range(n):
         # 'i' = the index of one movie
-        for row in user.iloc[movie2idx[i]].itertuples():
+        for row in data.iloc[movie2idx[i]].itertuples():
             # u = user who rated movie i
             u = row.user_id
             # u_i = user u's rating on movie i
             u_i = row.rating
             # row.movie_id = i (due to how movie2idx is made)
-            others = user.iloc[user2idx[u]]
+            others = data.iloc[user2idx[u]]
             # others = dataframe of ratings, all of which are by user
             # u.  Then u_js is a series of ratings for those movies,
             # and js is the movie indices corresponding to those:
@@ -55,18 +55,20 @@ def deviation_from_df(data):
             # As user u also rated movie i, all other ratings here are
             # (combined with u_i): a pair of ratings by the same user.
             # We can exploit some symmetry too:
-            mask = js > i
-            u_js, js = u_js[mask], js[mask]
+            #mask = js > i
+            #u_js, js = u_js[mask], js[mask]
             # So, we may add up u_j - u_i below (and for the flipped
             # indices it's simply negated):
             d = u_js - u_i
             diff[i, js] -= d
-            diff[js, i] += d
+            #diff[js, i] += d
             # and count the ratings, so we may compute an average:
             counts[i, js] += 1
-            counts[js, i] += 1
+            #counts[js, i] += 1
     # This is still much slower than the version that starts from a
     # matrix.
+    diff -= diff.T
+    counts += counts.T
     dev = diff / np.maximum(1, counts)
     return dev, counts
 
@@ -93,20 +95,50 @@ def deviation(M, mask):
     counts -- NumPy array of shape (n,n)
     """
     m,n = M.shape
-    dev = np.zeros((n,n))
-    counts = np.zeros((n,n))
-    for i in range(n):
-        for j in range(i + 1, n):
-            # mask_ij[u] is True if user u (i.e. row u of M or mask)
-            # contains ratings for both items i and j, otherwise False
-            mask_ij = np.logical_and(mask[:,i], mask[:,j])
-            diffs = M[mask_ij, j] - M[mask_ij, i]
-            denom = mask_ij.sum()
-            s = diffs.sum() / max(1, denom)
-            dev[j, i] = s
-            dev[i, j] = -s
-            counts[i, j] = denom
-            counts[j, i] = denom
+    # In order to get *average* deviation, we need the number of users
+    # who rated each pair of items.  If we take columns i and j from
+    # 'mask', element-wise logical AND them, and sum them, this gives
+    # that number for items i and j.
+    #
+    # Note that this is just the dot product of columns i and j - and
+    # that matrix multiplication A*B is just the dot products of every
+    # combination of A's rows and B's columns.  Thus, if A=mask.T and
+    # B=mask, that's every pair of columns of mask, dotted:
+    m2 = mask.astype(np.int)
+    counts = m2.T @ m2
+    # Then counts[i,j] = number of users who rated both item i and j.
+    #
+    # Now, what we really want is average deviation.  However, the way
+    # the summation is written, this is just total deviation divided
+    # by number of ratings.  We already computed number of ratings
+    # above.  So, all we need is total deviation.
+    #
+    # But also, total deviation is the sum of (u_j - u_i) for every
+    # pair of i and j rated by the same user.  We can split that into
+    # the difference of the sum of u_j and the sum of u_i, provided
+    # that we use the exact same summation for each.
+    #
+    # Note that if we take the dot product between column j of the
+    # mask, and column i of M, what we get is: The sum of only the
+    # ratings for item i done by users who also rated item j.
+    # Following the same reasoning for 'counts', this means that if S
+    # is the matrix product of mask.T and M, then S[j,i] is that same
+    # sum of ratings for any i and j.
+    S = m2.T @ M
+    # If S[j,i] is the sum of only ratings for item i by users who
+    # also rated j, clearly S[i,j] is the sum of only ratings for item
+    # j by users who also rated i.  This has some symmetry to it: Both
+    # S[j,i] and S[i,j] summed over the same ratings (always those by
+    # users who rated both item i and item j).
+    #
+    # Note that this is basically the definition of u_j and u_i.  The
+    # only thing left is that we need to do S[i,j]-S[j,i] for every i
+    # and j, and this gives the above u_j - u_i for all i & j:
+    diffs = S.T - S
+    # and normalizing this by the counts turns it to an average:
+    dev = diffs / np.maximum(1, counts)
+    # By convention, if counts=0 then diffs=0, so we just say
+    # deviation=0 to avoid division by 0 - hence np.maximum(1, counts)
     return dev, counts
 
 def predict(M, mask, dev, counts, u, j, weighted = False):
