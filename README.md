@@ -4,7 +4,7 @@ recommender_examples
 Start from: [Recommender Systems.ipynb](./Recommender%20Systems.ipynb)
 
 There is also an exported copy of the part 1 notebook at:
-<https://hodapple.com/blag/posts/2018-04-08-recommender-systems-1.html>
+<https://hodapple.com/blag/posts/2018-04-08-recommender-systems-1/>
 
 This is a tutorial on [recommender
 systems](https://en.wikipedia.org/wiki/Recommender_system).  It is
